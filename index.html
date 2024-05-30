@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HoloLens Coin Flip</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+      #startAR {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 999;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="startAR">Start AR</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r128/examples/js/vr/WebXR.js"></script>
+    <script>
+      if (navigator.xr) {
+        navigator.xr.isSessionSupported("immersive-ar").then((supported) => {
+          if (supported) {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(
+              70,
+              window.innerWidth / window.innerHeight,
+              0.01,
+              10
+            );
+            const renderer = new THREE.WebGLRenderer({
+              antialias: true,
+              alpha: true,
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            const geometry = new THREE.CircleGeometry(0.1, 32);
+            const materialHeads = new THREE.MeshBasicMaterial({
+              color: 0x00ff00,
+            });
+            const materialTails = new THREE.MeshBasicMaterial({
+              color: 0xff0000,
+            });
+            const coinHeads = new THREE.Mesh(geometry, materialHeads);
+            const coinTails = new THREE.Mesh(geometry, materialTails);
+            coinTails.rotation.x = Math.PI;
+            scene.add(coinHeads);
+            scene.add(coinTails);
+            coinHeads.visible = true;
+            coinTails.visible = false;
+
+            let flipping = false;
+            function flipCoin() {
+              if (!flipping) {
+                flipping = true;
+                const duration = 1000;
+                const startTime = performance.now();
+                const animate = (time) => {
+                  const elapsed = time - startTime;
+                  const progress = elapsed / duration;
+                  const rotation = progress * Math.PI * 2;
+                  coinHeads.rotation.y = rotation;
+                  coinTails.rotation.y = rotation;
+                  if (elapsed < duration) {
+                    requestAnimationFrame(animate);
+                  } else {
+                    flipping = false;
+                    coinHeads.visible = !coinHeads.visible;
+                    coinTails.visible = !coinTails.visible;
+                  }
+                };
+                requestAnimationFrame(animate);
+              }
+            }
+
+            function animate() {
+              renderer.setAnimationLoop(() => {
+                renderer.render(scene, camera);
+              });
+            }
+
+            function startAR() {
+              navigator.xr
+                .requestSession("immersive-ar", {
+                  requiredFeatures: ["local-floor"],
+                })
+                .then((session) => {
+                  renderer.xr.setSession(session);
+                  document.body.addEventListener("click", flipCoin);
+                  animate();
+                });
+            }
+
+            document
+              .getElementById("startAR")
+              .addEventListener("click", startAR);
+          } else {
+            alert("WebXR immersive-ar not supported");
+          }
+        });
+      } else {
+        alert("WebXR not supported");
+      }
+    </script>
+  </body>
+</html>
